@@ -93,6 +93,7 @@ class Fat:
         for file in all_files:
             print(json.dumps(file))
 
+
     def _to_sector(self, cluster: int) -> int:
         """Convert a cluster number to a sector number
 
@@ -132,8 +133,16 @@ class Fat:
         assert (
             0 < (number * 4 + 4) < self.boot["sectors_per_fat"]
         ), f"{number} exceeds FAT size"
-
-        pass
+        list_of_sectors = []
+        byte_offset = number * 4
+        entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
+        if entry_value != 0:
+            list_of_sectors += list(range(self._to_sector(number), self._end_sector(number) + 1))
+            while entry_value <= 0x0FFFFFF8:
+                byte_offset = entry_value * 4
+                list_of_sectors += list(range(self._to_sector(entry_value), self._end_sector(entry_value) + 1))
+                entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
+        return list_of_sectors
 
     def _retrieve_data(self, cluster: int, ignore_unallocated=False) -> bytes:
         """Read in the data for a given file allocation table entry number (i.e., the cluster number).
@@ -245,6 +254,7 @@ def main():
     # Parse the file and print results
     fs = Fat(filename)
     fs.info()
+
 
 
 if __name__ == "__main__":
