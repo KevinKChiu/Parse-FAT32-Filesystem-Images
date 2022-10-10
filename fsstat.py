@@ -61,6 +61,17 @@ class Fat:
         self.boot["number_of_fats"] = unpack(self.file.read(1))
         self.file.seek(32) 
         self.boot["total_sectors"] = unpack(self.file.read(4)) 
+        self.file.seek(36)
+        self.boot["sectors_per_fat"] = unpack(self.file.read(4))
+        self.file.seek(44)
+        self.boot["root_dir_first_cluster"] = unpack(self.file.read(4))
+        self.boot["bytes_per_cluster"] = self.boot["bytes_per_sector"] * self.boot["sectors_per_cluster"]
+        self.boot["fat0_sector_start"] = self.boot["reserved_sectors"]
+        self.boot["fat0_sector_end"] = self.boot["fat0_sector_start"] + self.boot["sectors_per_fat"] - 1
+        self.boot["data_start"] = self.boot["reserved_sectors"] + self.boot["sectors_per_fat"] * self.boot["number_of_fats"]
+        self.boot["data_end"] = self.boot["total_sectors"] - 1
+        self.file.seek(self.boot["fat0_sector_start"] * self.boot["bytes_per_sector"])
+        self.fat = self.file.read(self.boot["sectors_per_fat"] * self.boot["bytes_per_sector"])
 
 
     def info(self):
