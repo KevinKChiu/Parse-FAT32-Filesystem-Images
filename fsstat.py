@@ -53,6 +53,14 @@ class Fat:
         """
         self.file.seek(11)
         self.boot["bytes_per_sector"] = unpack(self.file.read(2))
+        self.file.seek(13)
+        self.boot["sectors_per_cluster"] = unpack(self.file.read(1))
+        self.file.seek(14)
+        self.boot["reserved_sectors"] = unpack(self.file.read(2))
+        self.file.seek(16)
+        self.boot["number_of_fats"] = unpack(self.file.read(1))
+        self.file.seek(32) 
+        self.boot["total_sectors"] = unpack(self.file.read(4)) 
 
 
     def info(self):
