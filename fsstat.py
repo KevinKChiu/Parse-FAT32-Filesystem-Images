@@ -263,11 +263,13 @@ class Fat:
         """
         directory_entries = []
         entry_num = 0
+        byte_count = 0
         is_dir = False
-        while not is_dir:
+        while not is_dir or byte_count < 1024:
             entry = {}
             byte_offset = 32 * entry_num
             entry_data = self._retrieve_data(cluster)[byte_offset : byte_offset + 32]
+            byte_count += 32
             entry["parent"] = parent
             entry["dir_cluster"] = cluster
             entry["entry_num"] = entry_num
@@ -280,7 +282,7 @@ class Fat:
             entry["deleted"] = deleted
             if entry["entry_type"] == 'dir':
                 is_dir = True
-                entry["content_cluster"] = self._get_first_cluster(entry_data)
+                # entry["content_cluster"] = self._get_first_cluster(entry_data)
             directory_entries.append(entry)
             entry_num += 1
         
