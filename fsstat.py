@@ -65,22 +65,15 @@ class Fat:
         self.boot["sectors_per_fat"] = unpack(self.file.read(4))
         self.file.seek(44)
         self.boot["root_dir_first_cluster"] = unpack(self.file.read(4))
-        self.boot["bytes_per_cluster"] = (
-            self.boot["bytes_per_sector"] * self.boot["sectors_per_cluster"]
-        )
+        self.boot["bytes_per_cluster"] = self.boot["bytes_per_sector"] * self.boot["sectors_per_cluster"]
         self.boot["fat0_sector_start"] = self.boot["reserved_sectors"]
-        self.boot["fat0_sector_end"] = (
-            self.boot["fat0_sector_start"] + self.boot["sectors_per_fat"] - 1
-        )
+        self.boot["fat0_sector_end"] = self.boot["fat0_sector_start"] + self.boot["sectors_per_fat"] - 1
         self.boot["data_start"] = (
-            self.boot["reserved_sectors"]
-            + self.boot["sectors_per_fat"] * self.boot["number_of_fats"]
+            self.boot["reserved_sectors"] + self.boot["sectors_per_fat"] * self.boot["number_of_fats"]
         )
         self.boot["data_end"] = self.boot["total_sectors"] - 1
         self.file.seek(self.boot["fat0_sector_start"] * self.boot["bytes_per_sector"])
-        self.fat = self.file.read(
-            self.boot["sectors_per_fat"] * self.boot["bytes_per_sector"]
-        )
+        self.fat = self.file.read(self.boot["sectors_per_fat"] * self.boot["bytes_per_sector"])
 
     def info(self):
         """Print already-parsed information about the FAT filesystem as a json string"""
@@ -101,9 +94,7 @@ class Fat:
         returns:
             int: sector number
         """
-        return (cluster - 2) * self.boot["sectors_per_cluster"] + self.boot[
-            "data_start"
-        ]
+        return (cluster - 2) * self.boot["sectors_per_cluster"] + self.boot["data_start"]
 
     def _end_sector(self, cluster: int) -> int:
         """Return the last sector of a cluster
@@ -129,22 +120,16 @@ class Fat:
         returns:
             list[int]: list of sectors
         """
-        assert (
-            0 < (number * 4 + 4) < self.boot["sectors_per_fat"]
-        ), f"{number} exceeds FAT size"
+        assert 0 < (number * 4 + 4) < self.boot["sectors_per_fat"], f"{number} exceeds FAT size"
         list_of_sectors = []
         byte_offset = number * 4
         entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
         if entry_value != 0:
-            list_of_sectors += list(
-                range(self._to_sector(number), self._end_sector(number) + 1)
-            )
+            list_of_sectors += list(range(self._to_sector(number), self._end_sector(number) + 1))
             while entry_value <= 0x0FFFFFF8:
                 byte_offset = entry_value * 4
                 list_of_sectors += list(
-                    range(
-                        self._to_sector(entry_value), self._end_sector(entry_value) + 1
-                    )
+                    range(self._to_sector(entry_value), self._end_sector(entry_value) + 1)
                 )
                 entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
         return list_of_sectors
@@ -268,9 +253,7 @@ class Fat:
         while (not is_dir) or (not is_unallocated):
             entry = {}
             byte_offset = 32 * entry_num
-            entry_data = self._retrieve_data(cluster, True)[
-                byte_offset : byte_offset + 32
-            ]
+            entry_data = self._retrieve_data(cluster, True)[byte_offset : byte_offset + 32]
             entry["parent"] = parent
             entry["dir_cluster"] = cluster
             entry["entry_num"] = entry_num
@@ -284,20 +267,14 @@ class Fat:
             if entry_data[0] == 0xE5:
                 deleted = True
             entry["deleted"] = deleted
-            if (
-                entry["entry_type"] == "dir"
-                and entry["name"] != "."
-                and entry["name"] != ".."
-            ):
+            if entry["entry_type"] == "dir" and entry["name"] != "." and entry["name"] != "..":
                 is_dir = True
                 name = entry["name"]
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
                 directory_entries += self.parse_dir(content_cluster, "/" + name)
             elif (
-                entry["entry_type"] != "lfn"
-                and entry["entry_type"] != "vol"
-                and entry["entry_type"] != "dir"
+                entry["entry_type"] != "lfn" and entry["entry_type"] != "vol" and entry["entry_type"] != "dir"
             ):
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
