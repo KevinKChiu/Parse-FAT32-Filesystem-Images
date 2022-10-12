@@ -266,7 +266,6 @@ class Fat:
         # byte_count = 0
         is_unallocated = False
         is_dir = False
-        content_cluster = ""
         name = ""
         while (not is_dir) or (not is_unallocated):
             entry = {}
@@ -291,11 +290,16 @@ class Fat:
                 name = entry["name"]
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
-                directory_entries.append(entry)
+                # directory_entries.append(entry)
                 directory_entries += self.parse_dir(content_cluster, "/" + name)
-            else: 
-                directory_entries.append(entry)
+            elif entry["entry_type"] != 'lfn' and entry["entry_type"] != 'vol' and entry["entry_type"] != 'dir': 
+                content_cluster = self._get_first_cluster(entry_data)
+                entry["content_cluster"] = content_cluster
+                if not entry["deleted"]:
+                    entry["filesize"] = unpack(entry_data[28 : 32])
+                    entry["content_sectors"] = self._get_sectors(content_cluster)
             entry_num += 1
+            directory_entries.append(entry)
         return directory_entries
 
 
