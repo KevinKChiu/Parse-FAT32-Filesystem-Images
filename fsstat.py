@@ -228,7 +228,7 @@ class Fat:
             return file_content, slack
         else:
             self.file.seek(self._to_sector(cluster) * self.boot["bytes_per_sector"])
-            return str(self.file.read(128)), None
+            return str(self.file.read(min_size)), None
 
     def parse_dir(self, cluster: int, parent="") -> list[dict]:
         """Parse a directory cluster, returns a list of dictionaries, one dict per entry.
