@@ -228,7 +228,8 @@ class Fat:
         data = self._retrieve_data(cluster, True)
         if data != bytes():
             file_content = str(data[0:min_size])
-            slack = str(data[-32:])
+            # slack = str(data[-32:])
+            slack = str(data[filesize:filesize+32])
             return file_content, slack
         else:
             self.file.seek(self._to_sector(cluster) * self.boot["bytes_per_sector"])
