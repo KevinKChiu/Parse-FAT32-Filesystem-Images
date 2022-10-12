@@ -263,29 +263,39 @@ class Fat:
         """
         directory_entries = []
         entry_num = 0
-        byte_count = 0
+        # byte_count = 0
+        is_unallocated = False
         is_dir = False
-        while not is_dir or byte_count < 1024:
+        content_cluster = ""
+        name = ""
+        while (not is_dir) or (not is_unallocated):
             entry = {}
             byte_offset = 32 * entry_num
             entry_data = self._retrieve_data(cluster)[byte_offset : byte_offset + 32]
-            byte_count += 32
+            # byte_count += 32
             entry["parent"] = parent
             entry["dir_cluster"] = cluster
             entry["entry_num"] = entry_num
             entry["dir_sectors"] = self._get_sectors(cluster)
-            entry["entry_type"] = hw4utils.get_entry_type(entry_data[11])
+            entry_type = hw4utils.get_entry_type(entry_data[11])
+            if entry_type == hex(0): 
+                break
+            entry["entry_type"] = entry_type
             entry["name"] = hw4utils.parse_name(entry_data)
             deleted = False
             if entry_data[0] == 0xe5:
                 deleted = True
             entry["deleted"] = deleted
-            if entry["entry_type"] == 'dir':
+            if entry["entry_type"] == 'dir' and entry["name"] != '.' and entry['name'] != '..':
                 is_dir = True
-                # entry["content_cluster"] = self._get_first_cluster(entry_data)
-            directory_entries.append(entry)
+                name = entry["name"]
+                content_cluster = self._get_first_cluster(entry_data)
+                entry["content_cluster"] = content_cluster
+                directory_entries.append(entry)
+                directory_entries += self.parse_dir(content_cluster, "/" + name)
+            else: 
+                directory_entries.append(entry)
             entry_num += 1
-        
         return directory_entries
 
 
