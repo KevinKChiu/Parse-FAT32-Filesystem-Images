@@ -223,8 +223,7 @@ class Fat:
         data = self._retrieve_data(cluster, True)
         if data != bytes():
             file_content = str(data[0:min_size])
-            # slack = str(data[-32:])
-            slack = str(data[filesize:filesize+32])
+            slack = str(data[filesize : filesize + 32])
             return file_content, slack
         else:
             self.file.seek(self._to_sector(cluster) * self.boot["bytes_per_sector"])
@@ -263,7 +262,6 @@ class Fat:
         """
         directory_entries = []
         entry_num = 0
-        # byte_count = 0
         is_unallocated = False
         is_dir = False
         name = ""
@@ -273,7 +271,6 @@ class Fat:
             entry_data = self._retrieve_data(cluster, True)[
                 byte_offset : byte_offset + 32
             ]
-            # byte_count += 32
             entry["parent"] = parent
             entry["dir_cluster"] = cluster
             entry["entry_num"] = entry_num
@@ -296,7 +293,6 @@ class Fat:
                 name = entry["name"]
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
-                # directory_entries.append(entry)
                 directory_entries += self.parse_dir(content_cluster, "/" + name)
             elif (
                 entry["entry_type"] != "lfn"
@@ -308,7 +304,6 @@ class Fat:
                 if content_cluster != 0:
                     entry["filesize"] = unpack(entry_data[28:32])
                     content = self._get_content(content_cluster, entry["filesize"])
-                    # print(content)
                     entry["content_sectors"] = self._get_sectors(content_cluster)
                     entry["content"] = content[0]
                     entry["slack"] = content[1]
