@@ -97,8 +97,6 @@ class Fat:
         for file in all_files:
             print(json.dumps(file))
 
-
-
     def _to_sector(self, cluster: int) -> int:
         """Convert a cluster number to a sector number
 
@@ -142,10 +140,16 @@ class Fat:
         byte_offset = number * 4
         entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
         if entry_value != 0:
-            list_of_sectors += list(range(self._to_sector(number), self._end_sector(number) + 1))
+            list_of_sectors += list(
+                range(self._to_sector(number), self._end_sector(number) + 1)
+            )
             while entry_value <= 0x0FFFFFF8:
                 byte_offset = entry_value * 4
-                list_of_sectors += list(range(self._to_sector(entry_value), self._end_sector(entry_value) + 1))
+                list_of_sectors += list(
+                    range(
+                        self._to_sector(entry_value), self._end_sector(entry_value) + 1
+                    )
+                )
                 entry_value = unpack(self.fat[byte_offset : byte_offset + 4])
         return list_of_sectors
 
@@ -173,10 +177,11 @@ class Fat:
             bytes: data (possibly zero length)
         """
         data = bytes()
-        sector_list = self._get_sectors(cluster)
-        for curr_sector in sector_list: 
-            self.file.seek(curr_sector * self.boot["bytes_per_sector"])
-            data += self.file.read(self.boot["bytes_per_sector"])
+        if ignore_unallocated:
+            sector_list = self._get_sectors(cluster)
+            for curr_sector in sector_list:
+                self.file.seek(curr_sector * self.boot["bytes_per_sector"])
+                data += self.file.read(self.boot["bytes_per_sector"])
         return data
 
     def _get_first_cluster(self, entry: bytes) -> int:
@@ -219,16 +224,15 @@ class Fat:
             str (or None if unallocated cluster): slack content (up to 32 bytes)
 
         """
-        # min_size = min(128, filesize)
-        # data = self._retrieve_data(cluster)
-        # if data == bytes(): 
-        #     return (data[0: min_size], "None")
-        # else:
-        #     last_sector = self._get_sectors(cluster)[-1]
-        #     self.file.seek(last_sector * self.boot["bytes_per_sector"])
-        #     slack = self.file.read(32)
-        #     return (data[0: min_size], slack)
-        pass
+        min_size = min(128, filesize)
+        data = self._retrieve_data(cluster, True)
+        if data != bytes():
+            file_content = str(data[0:min_size])
+            slack = str(data[-32:])
+            return file_content, slack
+        else:
+            self.file.seek(self._to_sector(cluster) * self.boot["bytes_per_sector"])
+            return str(self.file.read(128)), None
 
     def parse_dir(self, cluster: int, parent="") -> list[dict]:
         """Parse a directory cluster, returns a list of dictionaries, one dict per entry.
@@ -270,34 +274,48 @@ class Fat:
         while (not is_dir) or (not is_unallocated):
             entry = {}
             byte_offset = 32 * entry_num
-            entry_data = self._retrieve_data(cluster)[byte_offset : byte_offset + 32]
+            entry_data = self._retrieve_data(cluster, True)[
+                byte_offset : byte_offset + 32
+            ]
             # byte_count += 32
             entry["parent"] = parent
             entry["dir_cluster"] = cluster
             entry["entry_num"] = entry_num
             entry["dir_sectors"] = self._get_sectors(cluster)
             entry_type = hw4utils.get_entry_type(entry_data[11])
-            if entry_type == hex(0): 
+            if entry_type == hex(0):
                 break
             entry["entry_type"] = entry_type
             entry["name"] = hw4utils.parse_name(entry_data)
             deleted = False
-            if entry_data[0] == 0xe5:
+            if entry_data[0] == 0xE5:
                 deleted = True
             entry["deleted"] = deleted
-            if entry["entry_type"] == 'dir' and entry["name"] != '.' and entry['name'] != '..':
+            if (
+                entry["entry_type"] == "dir"
+                and entry["name"] != "."
+                and entry["name"] != ".."
+            ):
                 is_dir = True
                 name = entry["name"]
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
                 # directory_entries.append(entry)
                 directory_entries += self.parse_dir(content_cluster, "/" + name)
-            elif entry["entry_type"] != 'lfn' and entry["entry_type"] != 'vol' and entry["entry_type"] != 'dir': 
+            elif (
+                entry["entry_type"] != "lfn"
+                and entry["entry_type"] != "vol"
+                and entry["entry_type"] != "dir"
+            ):
                 content_cluster = self._get_first_cluster(entry_data)
                 entry["content_cluster"] = content_cluster
-                if not entry["deleted"]:
-                    entry["filesize"] = unpack(entry_data[28 : 32])
+                if content_cluster != 0:
+                    entry["filesize"] = unpack(entry_data[28:32])
+                    content = self._get_content(content_cluster, entry["filesize"])
+                    # print(content)
                     entry["content_sectors"] = self._get_sectors(content_cluster)
+                    entry["content"] = content[0]
+                    entry["slack"] = content[1]
             entry_num += 1
             directory_entries.append(entry)
         return directory_entries
@@ -312,7 +330,6 @@ def main():
     # Parse the file and print results
     fs = Fat(filename)
     fs.info()
-
 
 
 if __name__ == "__main__":
