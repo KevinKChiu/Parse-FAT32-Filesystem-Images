@@ -85,10 +85,6 @@ class Fat:
     def info(self):
         """Print already-parsed information about the FAT filesystem as a json string"""
 
-        # # # TESTING BELOW
-        # print(self._retrieve_data(7))
-        # # # TESTING ABOVE
-
         # Print out all keys stored in the self.boot dictionary
         print(json.dumps(self.boot, indent=4))
 
@@ -177,11 +173,10 @@ class Fat:
             bytes: data (possibly zero length)
         """
         data = bytes()
-        if ignore_unallocated:
-            sector_list = self._get_sectors(cluster)
-            for curr_sector in sector_list:
-                self.file.seek(curr_sector * self.boot["bytes_per_sector"])
-                data += self.file.read(self.boot["bytes_per_sector"])
+        sector_list = self._get_sectors(cluster)
+        for curr_sector in sector_list:
+            self.file.seek(curr_sector * self.boot["bytes_per_sector"])
+            data += self.file.read(self.boot["bytes_per_sector"])
         return data
 
     def _get_first_cluster(self, entry: bytes) -> int:
