@@ -219,15 +219,16 @@ class Fat:
             str (or None if unallocated cluster): slack content (up to 32 bytes)
 
         """
-        min_size = min(128, filesize)
-        data = self._retrieve_data(cluster)
-        if data == bytes(): 
-            return (data[0: min_size], "None")
-        else:
-            last_sector = self._get_sectors(cluster)[-1]
-            self.file.seek(last_sector * self.boot["bytes_per_sector"])
-            slack = self.file.read(32)
-            return (data[0: min_size], slack)
+        # min_size = min(128, filesize)
+        # data = self._retrieve_data(cluster)
+        # if data == bytes(): 
+        #     return (data[0: min_size], "None")
+        # else:
+        #     last_sector = self._get_sectors(cluster)[-1]
+        #     self.file.seek(last_sector * self.boot["bytes_per_sector"])
+        #     slack = self.file.read(32)
+        #     return (data[0: min_size], slack)
+        pass
 
     def parse_dir(self, cluster: int, parent="") -> list[dict]:
         """Parse a directory cluster, returns a list of dictionaries, one dict per entry.
@@ -260,7 +261,30 @@ class Fat:
         returns:
             list[dict]: list of dictionaries, one dict per entry
         """
-        pass
+        directory_entries = []
+        entry_num = 0
+        is_dir = False
+        while not is_dir:
+            entry = {}
+            byte_offset = 32 * entry_num
+            entry_data = self._retrieve_data(cluster)[byte_offset : byte_offset + 32]
+            entry["parent"] = parent
+            entry["dir_cluster"] = cluster
+            entry["entry_num"] = entry_num
+            entry["dir_sectors"] = self._get_sectors(cluster)
+            entry["entry_type"] = hw4utils.get_entry_type(entry_data[11])
+            entry["name"] = hw4utils.parse_name(entry_data)
+            deleted = False
+            if entry_data[0] == 0xe5:
+                deleted = True
+            entry["deleted"] = deleted
+            if entry["entry_type"] == 'dir':
+                is_dir = True
+                entry["content_cluster"] = self._get_first_cluster(entry_data)
+            directory_entries.append(entry)
+            entry_num += 1
+        
+        return directory_entries
 
 
 def main():
