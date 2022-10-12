@@ -85,9 +85,9 @@ class Fat:
     def info(self):
         """Print already-parsed information about the FAT filesystem as a json string"""
 
-        # # TESTING BELOW
-        print(self._retrieve_data(7))
-        # # TESTING ABOVE
+        # # # TESTING BELOW
+        # print(self._retrieve_data(7))
+        # # # TESTING ABOVE
 
         # Print out all keys stored in the self.boot dictionary
         print(json.dumps(self.boot, indent=4))
@@ -219,7 +219,15 @@ class Fat:
             str (or None if unallocated cluster): slack content (up to 32 bytes)
 
         """
-        pass
+        min_size = min(128, filesize)
+        data = self._retrieve_data(cluster)
+        if data == bytes(): 
+            return (data[0: min_size], "None")
+        else:
+            last_sector = self._get_sectors(cluster)[-1]
+            self.file.seek(last_sector * self.boot["bytes_per_sector"])
+            slack = self.file.read(32)
+            return (data[0: min_size], slack)
 
     def parse_dir(self, cluster: int, parent="") -> list[dict]:
         """Parse a directory cluster, returns a list of dictionaries, one dict per entry.
