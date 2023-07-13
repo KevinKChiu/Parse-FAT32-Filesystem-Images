@@ -1,2 +1,2 @@
-# CS365-Assignment4
- 
+# Assignment4
+Get information about a FAT32 filesystem and each file.
